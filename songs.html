@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คลังเพลง - รายชื่อเพลง 🎸</title>
+    <style>
+        * { 
+            box-sizing: border-box; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            background-color: #1e272e; color: #fff;
+            display: flex; flex-direction: column;
+        }
+        
+        /* 1. ส่วนควบคุมด้านบน (Header) */
+        .header-section {
+            background-color: #2f3640; 
+            padding: 10px 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            z-index: 10;
+        }
+        .top-row { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin-bottom: 8px; 
+        }
+        .back-btn {
+            background: #485460; color: white; text-decoration: none;
+            padding: 6px 12px; border-radius: 6px; font-size: 14px; font-weight: bold;
+            transition: 0.2s;
+        }
+        .back-btn:hover { background: #718093; }
+        #playlistTitle { 
+            font-size: 18px; margin: 0; color: #fbc531; flex: 1; text-align: center; 
+        }
+        
+        /* ช่องค้นหาเพลง */
+        #searchBar {
+            width: 100%; padding: 10px 15px; font-size: 15px; border: none;
+            border-radius: 20px; background-color: #3f4754; color: white; outline: none;
+            margin-bottom: 10px;
+        }
+        
+        /* 2. ปรับเป็นระบบ Grid กระจายแถว ไม่ต้องสไลด์ซ้าย-ขวา */
+        .song-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* แบ่งหน้าจอเป็น 3 คอลัมน์เท่าๆ กัน */
+            gap: 6px; /* ระยะห่างระหว่างปุ่มเพลง */
+            padding: 5px 0; 
+            margin: 0;
+            list-style: none;
+            max-height: 550px; /* คุมความสูงของโซนรายชื่อเพลงไว้เพื่อให้พื้นที่คอร์ดด้านล่างกว้างที่สุด */
+            overflow-y: auto; /* เผื่อกรณีเพลงเยอะจัดจนล้นกล่อง จะเลื่อนลงมาแนวดิ่งได้นิดหน่อย */
+        }
+        .song-item { margin: 0; }
+        .song-btn {
+            display: block; 
+            padding: 8px 4px; 
+            background-color: #485460;
+            color: #fff; 
+            border-radius: 8px; 
+            text-decoration: none;
+            font-size: 13px; 
+            font-weight: bold; 
+            text-align: center;
+            cursor: pointer; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; /* ถ้าชื่อเพลงยาวไปจะตัดท้ายเป็น ... เพื่อไม่ให้ปุ่มเบี้ยว */
+            transition: 0.1s;
+        }
+        .song-btn.selected { background-color: #20bf6b; color: #fff; }
+
+        /* 3. พื้นที่แสดงรูปภาพคอร์ดเพลง (เหลือพื้นที่จุใจด้านล่าง) */
+        .chord-viewer {
+            flex: 1; 
+            display: flex; justify-content: center;
+            align-items: flex-start; 
+            overflow-y: auto; padding: 10px;
+        }
+        #chordImage {
+            max-width: 100%; height: auto; border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: none;
+        }
+        .placeholder-text { color: #718093; font-size: 16px; margin-top: 80px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="header-section">
+    <div class="top-row">
+        <a href="index.html" class="back-btn">⬅️ กลับหน้าแรก</a>
+        <h1 id="playlistTitle">กำลังโหลดข้อมูล...</h1>
+    </div>
+    <input type="text" id="searchBar" onkeyup="filterSongs()" placeholder="🔍 พิมพ์ค้นหาเพลงในหน้านี้...">
+    
+    <ul class="song-list" id="songList"></ul>
+</div>
+
+<div class="chord-viewer">
+    <div id="placeholder" class="placeholder-text">💡 กรุณาเลือกรายชื่อเพลงด้านบน เพื่อเปิดแสดงรูปคอร์ด</div>
+    <img id="chordImage" src="" alt="คอร์ดเพลง">
+</div>
+
+<script>
+    // ฐานข้อมูลเพลงที่คุณแก้ไขและใส่เพลงเพิ่มใน playlist4 ไว้เรียบร้อยแล้ว
+    const database = {
+        playlist1: {
+            title: "🎸 Playlist 1: รวมเพลงฮิต Loso",
+            songs: [
+                { name: "ใจสั่งมา - Loso", file: "jaisungma.jpg" },
+                { name: "อะไรก็ยอม - Loso", file: "araigoyom.jpg" },
+                { name: "14 อีกครั้ง - Loso", file: "14eekkrung.jpg" },
+                { name: "ฝนตกที่หน้าต่าง - Loso", file: "fontok.jpg" },
+                { name: "ผู้ชนะ - Loso", file: "jaisungma.jpg" },
+                { name: "แม้ว่า - Loso", file: "araigoyom.jpg" },
+                { name: "ฉันหรือเธอ (ที่เปลี่่ยนไป) - Loso", file: "14eekkrung.jpg" },
+                { name: "เคยรักฉันบ้างไหม - Loso", file: "fontok.jpg" },
+                { name: "แทบขาดใจ - Loso", file: "jaisungma.jpg" },
+                { name: "สาหัส - Loso", file: "araigoyom.jpg" },
+                { name: "คืนจันทร์ - Loso", file: "14eekkrung.jpg" },
+                { name: "ซมซาน - Loso", file: "fontok.jpg" }
+            ]
+        },
+        playlist2: {
+            title: "❤️ Playlist 2: เพลงรัก/อกหัก",
+            songs: [
+                { name: "สลักจิต - ป๊อบ ปองกูล", file: "song3.jpg" }
+            ]
+        },
+        playlist3: {
+            title: "🎵 Playlist 3: รวมเพลงอื่นๆ",
+            songs: [
+                { name: "ฤดูร้อน - Paradox", file: "song1.jpg" }
+            ]
+        },
+        playlist4: {
+            title: "🎸 Playlist 4: รวมเพลงฮิต Loso และเพลงอื่นๆ ทั้งหมด",
+            songs: [
+                { name: "ใจสั่งมา - Loso", file: "jaisungma.jpg" },
+                { name: "อะไรก็ยอม - Loso", file: "araigoyom.jpg" },
+                { name: "14 อีกครั้ง - Loso", file: "14eekkrung.jpg" },
+                { name: "ฝนตกที่หน้าต่าง - Loso", file: "fontok.jpg" },
+                { name: "ผู้ชนะ - Loso", file: "jaisungma.jpg" },
+                { name: "แม้ว่า - Loso", file: "araigoyom.jpg" },
+                { name: "ฉันหรือเธอ (ที่เปลี่่ยนไป) - Loso", file: "14eekkrung.jpg" },
+                { name: "เคยรักฉันบ้างไหม - Loso", file: "fontok.jpg" },
+                { name: "แทบขาดใจ - Loso", file: "jaisungma.jpg" },
+                { name: "สาหัส - Loso", file: "araigoyom.jpg" },
+                { name: "คืนจันทร์ - Loso", file: "14eekkrung.jpg" },
+                { name: "ซมซาน - Loso", file: "fontok.jpg" },
+                { name: "คืนที่ดาวเต็มฟ้า", file: "คืนที่ดาวเต็มฟ้า.png" },
+                { name: "หวังเล็ก ๆ", file: "หวังเล็กๆ.png" },
+                { name: "ที่หนึ่งไม่ไหว", file: "ที่หนึ่งไม่ไหว.png" },
+                { name: "รักคนมีเจ้าของ", file: "รักคนมีเจ้าของ.png" },
+                { name: "สุดใจ", file: "สุดใจ.png" },
+                { name: "ไม่กล้าบอกเธอ", file: "ไม่กล้าบอกเธอ.png" },
+                { name: "เล่นของสูง", file: "เล่นของสูง.png" },
+                { name: "โอ๊ย โอ๊ย", file: "โอ๊ย โอ๊ย.png" },
+                { name: "เชื่อฉัน", file: "เชื่อฉัน.png" },
+                { name: "รักครั้งแรก", file: "รักครั้งแรก.png" },
+                { name: "ฝุ่น", file: "ฝุ่น.png" },
+                { name: "When you say nothing at all", file: "when you say nothing at all.png" },
+                { name: "Can't help falling in love", file: "can't help falling in love.png" },
+                { name: "พูดลอยลอย", file: "พูดลอยๆ.png" },
+                { name: "ถ้าเธอไม่บอก", file: "fontok.jpg" },
+                { name: "แพ้ใจ", file: "แพ้ใจ.png" },
+                { name: "อยากให้อยู่ด้วยไหม", file: "อยากให้อยู่ด้วยไหม.png" },
+                { name: "เหนื่อยไหม", file: "เหนื่อยไหม.png" },
+                { name: "คนใจอ่อน (อ่อนใจ) D2B", file: "fontok.jpg" },
+                { name: "เป็นอย่างนี้ตั้งแต่เกิดเลย", file: "เป็นอย่างนี้ตั้งแต่เกิดเลย.png" },
+                { name: "ห่วงใย", file: "ห่วงใย.png" },
+				{ name: "หัวใจกระดาษ", file: "หัวใจกระดาษ.png" },
+				{ name: "แสนรัก", file: "แสนรัก.png" },
+				{ name: "สิทธิ์ของเธอ", file: "สิทธิ์ของเธอ.png" },
+				{ name: "คนโง่ๆ อย่างฉันจะรู้อะไร", file: "คนโง่ๆ.png" },
+				{ name: "กลัว", file: "กลัว.png" },
+				{ name: "ขี้หึง", file: "ขี้หึง.png" },
+				{ name: "คิดถึงเธอ", file: "คิดถึงเธอ.png" },
+				{ name: "คิดถึงฉันไหมเวลาที่เธอ...", file: "araigoyom.jpg" },
+				{ name: "ฝนตกไหม", file: "ฝนตกไหม.png" },
+				{ name: "ปอดแหก", file: "ปอดแหก.png" },
+				{ name: "แพ้ทาง", file: "แพ้ทาง key G.png" },
+				{ name: "ฟ้า", file: "ฟ้า.png" },
+				{ name: "ทุกสิ่ง", file: "ทุกสิ่ง.png" },
+				{ name: "นานเท่าไหร่ก็รอ", file: "นานเท่าไหร่ก็รอ.png" },
+				{ name: "อากาศ - ป้าง", file: "araigoyom.jpg" },
+				{ name: "แม้ว่า", file: "แม้ว่า.png" },
+				{ name: "ไม่กล้าบอกเธอ", file: "ไม่กล้าบอกเธอ.png" },
+				{ name: "ไม่สมศักดิ์ศรี", file: "ไม่สมศักดิ์ศรี.png" },
+				{ name: "อยากได้ยินว่ารักกัน", file: "อยากได้ยินว่ารักกันอ" },
+				{ name: "ก่อน", file: "araigoyom.jpg" },
+				{ name: "คิดอะไรอยู่", file: "คิดอะไรอยู่.png" },
+				{ name: "กรรม", file: "กรรม.png" },
+				{ name: "wherever you will go", file: "wherever you will go.png" },
+				{ name: "คิดถึง", file: "คิดถึง.png" },
+				{ name: "ความลับ", file: "ความลับ.png" },
+				{ name: "เก็บดาวมาให้เธอ", file: "เก็บดาวมาให้เธอ.png" },
+                { name: "ลม", file: "ลม.gif" }
+            ]
+        }
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPlaylist = urlParams.get('p') || 'playlist1';
+    const playlistData = database[currentPlaylist];
+    
+    document.getElementById('playlistTitle').innerText = playlistData.title;
+
+    const songListUl = document.getElementById('songList');
+    playlistData.songs.forEach(song => {
+        const li = document.createElement('li');
+        li.className = 'song-item';
+        li.innerHTML = `<a class="song-btn" onclick="viewChord(this, '${song.file}')">${song.name}</a>`;
+        songListUl.appendChild(li);
+    });
+
+    function viewChord(element, imageSrc) {
+    // สั่งเปิดแท็บใหม่ ไปที่โฟลเดอร์ Chords และเปิดรูปภาพนั้นทันที
+    window.open('Chords/' + imageSrc, '_blank');
+	}
+
+    function filterSongs() {
+        let input = document.getElementById('searchBar').value.toLowerCase();
+        let li = document.getElementById('songList').getElementsByClassName('song-item');
+        for (let i = 0; i < li.length; i++) {
+            let btn = li[i].getElementsByClassName('song-btn')[0];
+            if ((btn.textContent || btn.innerText).toLowerCase().indexOf(input) > -1) {
+                li[i].style.display = "";
+            } else {
+                li[i].style.display = "none";
+            }
+        }
+    }
+</script>
+</body>
+</html>
